@@ -29,6 +29,7 @@ class DataProvider with ChangeNotifier {
         Category(id: '1', name: 'كرتونة'),
         Category(id: '2', name: 'علبة'),
         Category(id: '3', name: 'يكن'),
+        Category(id: 'piece', name: 'قطعة'), // Added 'piece' category
       ];
       // Save categories to Hive directly
       for (var category in _categories) {
@@ -61,16 +62,6 @@ class DataProvider with ChangeNotifier {
   void addProduct(Product product) {
     if (!_categories.any((c) => c.id == product.categoryId)) {
       throw Exception('التصنيف غير موجود: ${product.categoryId}');
-      // Or assign a default category:
-      // product = Product(
-      //   id: product.id,
-      //   name: product.name,
-      //   barcode: product.barcode,
-      //   price: product.price,
-      //   purchasePrice: product.purchasePrice,
-      //   quantity: product.quantity,
-      //   categoryId: 'default',
-      // );
     }
     _products.add(product);
     HiveService.productsBox.put(product.id, product);
@@ -132,24 +123,8 @@ class DataProvider with ChangeNotifier {
   }
 
   void deleteCategory(String id) {
-    // Check if any product uses this category
     if (_products.any((p) => p.categoryId == id)) {
-      // Option 1: Prevent deletion if products are associated
       throw Exception('لا يمكن حذف التصنيف لأنه مرتبط بمنتجات.');
-      // Option 2: Reassign products to a default category
-      /*
-    _products.where((p) => p.categoryId == id).forEach((product) {
-      updateProduct(Product(
-        id: product.id,
-        name: product.name,
-        barcode: product.barcode,
-        price: product.price,
-        purchasePrice: product.purchasePrice,
-        quantity: product.quantity,
-        categoryId: 'default', // Ensure a default category exists
-      ));
-    });
-    */
     }
     _categories.removeWhere((c) => c.id == id);
     HiveService.categoriesBox.delete(id);
@@ -160,5 +135,14 @@ class DataProvider with ChangeNotifier {
     _invoices.add(invoice);
     HiveService.invoicesBox.put(invoice.id, invoice);
     notifyListeners();
+  }
+
+  void updateInvoice(Invoice invoice) {
+    final index = _invoices.indexWhere((i) => i.id == invoice.id);
+    if (index != -1) {
+      _invoices[index] = invoice;
+      HiveService.invoicesBox.put(invoice.id, invoice);
+      notifyListeners();
+    }
   }
 }

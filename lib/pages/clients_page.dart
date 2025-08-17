@@ -103,6 +103,7 @@ class _ClientsPageState extends State<ClientsPage> {
           ),
           const SizedBox(height: 20),
           Row(
+            textDirection: TextDirection.rtl,
             children: [
               ChoiceChip(
                 label: const Text('الكل'),
