@@ -29,10 +29,12 @@ class _ClientsPageState extends State<ClientsPage> {
     final clients = context.read<DataProvider>().clients;
     setState(() {
       filteredClients = clients.where((client) {
-        final matchesQuery = client.name.toLowerCase().contains(query.toLowerCase()) ||
-            client.phone.contains(query) ||
-            client.email.toLowerCase().contains(query.toLowerCase());
-        final matchesType = selectedType == 'all' || client.type == selectedType;
+        final matchesQuery =
+            client.name.toLowerCase().contains(query.toLowerCase()) ||
+                client.phone.contains(query) ||
+                client.email.toLowerCase().contains(query.toLowerCase());
+        final matchesType =
+            selectedType == 'all' || client.type == selectedType;
         return matchesQuery && matchesType;
       }).toList();
     });
@@ -62,9 +64,12 @@ class _ClientsPageState extends State<ClientsPage> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('تأكيد الحذف', textAlign: TextAlign.right),
-        content: Text('هل تريد حذف العميل "${client.name}"؟', textAlign: TextAlign.right),
+        content: Text('هل تريد حذف العميل "${client.name}"؟',
+            textAlign: TextAlign.right),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('إلغاء')),
+          TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('إلغاء')),
           TextButton(
             onPressed: () {
               context.read<DataProvider>().deleteClient(client.id);
@@ -95,10 +100,12 @@ class _ClientsPageState extends State<ClientsPage> {
               ElevatedButton.icon(
                 onPressed: () => _showAddClientDialog(),
                 icon: const Icon(Icons.add, color: Colors.white),
-                label: const Text('إضافة عميل جديد', style: TextStyle(color: Colors.white)),
+                label: const Text('إضافة عميل جديد',
+                    style: TextStyle(color: Colors.white)),
                 style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
               ),
-              const Text('العملاء', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+              const Text('العملاء',
+                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
             ],
           ),
           const SizedBox(height: 20),
@@ -146,83 +153,170 @@ class _ClientsPageState extends State<ClientsPage> {
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(12),
                 boxShadow: [
-                  BoxShadow(color: Colors.grey.withOpacity(0.1), spreadRadius: 1, blurRadius: 5),
+                  BoxShadow(
+                      color: Colors.grey.withOpacity(0.1),
+                      spreadRadius: 1,
+                      blurRadius: 5),
                 ],
               ),
               child: Column(
                 children: [
                   Container(
                     padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(color: Colors.blue, borderRadius: BorderRadius.circular(8)),
+                    decoration: BoxDecoration(
+                        color: Colors.blue,
+                        borderRadius: BorderRadius.circular(8)),
                     child: const Row(
                       children: [
-                        Expanded(flex: 2, child: Text('الإجراءات', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold), textAlign: TextAlign.center)),
-                        Expanded(flex: 2, child: Text('الرصيد', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold), textAlign: TextAlign.center)),
-                        Expanded(flex: 3, child: Text('البريد الإلكتروني', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold), textAlign: TextAlign.center)),
-                        Expanded(flex: 2, child: Text('رقم الهاتف', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold), textAlign: TextAlign.center)),
-                        Expanded(flex: 3, child: Text('اسم العميل', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold), textAlign: TextAlign.center)),
-                        Expanded(flex: 1, child: Text('#', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold), textAlign: TextAlign.center)),
+                        Expanded(
+                            flex: 2,
+                            child: Text('الإجراءات',
+                                style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold),
+                                textAlign: TextAlign.center)),
+                        Expanded(
+                            flex: 2,
+                            child: Text('حالة الفاتورة',
+                                style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold),
+                                textAlign: TextAlign.center)), // Added
+                        Expanded(
+                            flex: 2,
+                            child: Text('الرصيد',
+                                style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold),
+                                textAlign: TextAlign.center)),
+                        Expanded(
+                            flex: 3,
+                            child: Text('البريد الإلكتروني',
+                                style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold),
+                                textAlign: TextAlign.center)),
+                        Expanded(
+                            flex: 2,
+                            child: Text('رقم الهاتف',
+                                style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold),
+                                textAlign: TextAlign.center)),
+                        Expanded(
+                            flex: 3,
+                            child: Text('اسم العميل',
+                                style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold),
+                                textAlign: TextAlign.center)),
+                        Expanded(
+                            flex: 1,
+                            child: Text('#',
+                                style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold),
+                                textAlign: TextAlign.center)),
                       ],
                     ),
                   ),
                   const SizedBox(height: 8),
                   Expanded(
                     child: filteredClients.isEmpty
-                        ? const Center(child: Text('لا توجد عملاء', style: TextStyle(fontSize: 16, color: Colors.grey)))
+                        ? const Center(
+                            child: Text('لا توجد عملاء',
+                                style: TextStyle(
+                                    fontSize: 16, color: Colors.grey)))
                         : ListView.builder(
-                      itemCount: filteredClients.length,
-                      itemBuilder: (context, index) {
-                        final client = filteredClients[index];
-                        return Container(
-                          margin: const EdgeInsets.only(bottom: 8),
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            border: Border.all(color: Colors.grey.shade300),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Row(
-                            children: [
-                              Expanded(
-                                flex: 2,
+                            itemCount: filteredClients.length,
+                            itemBuilder: (context, index) {
+                              final client = filteredClients[index];
+                              return Container(
+                                margin: const EdgeInsets.only(bottom: 8),
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  border:
+                                      Border.all(color: Colors.grey.shade300),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
                                 child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
-                                    IconButton(
-                                      icon: const Icon(Icons.edit, color: Colors.blue),
-                                      onPressed: () => _showAddClientDialog(client: client),
-                                      tooltip: 'تعديل',
+                                    Expanded(
+                                      flex: 2,
+                                      child: Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        children: [
+                                          IconButton(
+                                            icon: const Icon(Icons.edit,
+                                                color: Colors.blue),
+                                            onPressed: () =>
+                                                _showAddClientDialog(
+                                                    client: client),
+                                            tooltip: 'تعديل',
+                                          ),
+                                          IconButton(
+                                            icon: const Icon(Icons.delete,
+                                                color: Colors.red),
+                                            onPressed: () =>
+                                                _deleteClient(client),
+                                            tooltip: 'حذف',
+                                          ),
+                                        ],
+                                      ),
                                     ),
-                                    IconButton(
-                                      icon: const Icon(Icons.delete, color: Colors.red),
-                                      onPressed: () => _deleteClient(client),
-                                      tooltip: 'حذف',
+                                    Expanded(
+                                      flex: 2,
+                                      child: Text(
+                                        client.invoiceState ?? 'لا يوجد',
+                                        textAlign: TextAlign.center,
+                                        style: const TextStyle(fontSize: 14),
+                                      ), // Added invoice state display
                                     ),
+                                    Expanded(
+                                      flex: 2,
+                                      child: Text(
+                                        '${client.balance.toStringAsFixed(2)} ج.م',
+                                        textAlign: TextAlign.center,
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          color: client.balance >= 0
+                                              ? Colors.green
+                                              : Colors.red,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
+                                    Expanded(
+                                        flex: 3,
+                                        child: Text(client.email,
+                                            textAlign: TextAlign.center,
+                                            style:
+                                                const TextStyle(fontSize: 14))),
+                                    Expanded(
+                                        flex: 2,
+                                        child: Text(client.phone,
+                                            textAlign: TextAlign.center,
+                                            style:
+                                                const TextStyle(fontSize: 14))),
+                                    Expanded(
+                                        flex: 3,
+                                        child: Text(client.name,
+                                            textAlign: TextAlign.center,
+                                            style: const TextStyle(
+                                                fontSize: 14,
+                                                fontWeight: FontWeight.bold))),
+                                    Expanded(
+                                        flex: 1,
+                                        child: Text(client.id,
+                                            textAlign: TextAlign.center,
+                                            style:
+                                                const TextStyle(fontSize: 14))),
                                   ],
                                 ),
-                              ),
-                              Expanded(
-                                flex: 2,
-                                child: Text(
-                                  '${client.balance.toStringAsFixed(2)} ج.م',
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    color: client.balance >= 0 ? Colors.green : Colors.red,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ),
-                              Expanded(flex: 3, child: Text(client.email, textAlign: TextAlign.center, style: const TextStyle(fontSize: 14))),
-                              Expanded(flex: 2, child: Text(client.phone, textAlign: TextAlign.center, style: const TextStyle(fontSize: 14))),
-                              Expanded(
-                                  flex: 3,
-                                  child: Text(client.name, textAlign: TextAlign.center, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold))),
-                              Expanded(flex: 1, child: Text(client.id, textAlign: TextAlign.center, style: const TextStyle(fontSize: 14))),
-                            ],
+                              );
+                            },
                           ),
-                        );
-                      },
-                    ),
                   ),
                 ],
               ),
@@ -262,7 +356,8 @@ class _AddClientDialogState extends State<AddClientDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: Text(widget.client == null ? 'إضافة عميل جديد' : 'تعديل العميل', textAlign: TextAlign.right),
+      title: Text(widget.client == null ? 'إضافة عميل جديد' : 'تعديل العميل',
+          textAlign: TextAlign.right),
       content: Form(
         key: _formKey,
         child: SizedBox(
@@ -273,52 +368,71 @@ class _AddClientDialogState extends State<AddClientDialog> {
               TextFormField(
                 controller: _nameController,
                 textAlign: TextAlign.right,
-                decoration: const InputDecoration(labelText: 'اسم العميل', border: OutlineInputBorder()),
-                validator: (value) => value!.isEmpty ? 'يرجى إدخال اسم العميل' : null,
+                decoration: const InputDecoration(
+                    labelText: 'اسم العميل', border: OutlineInputBorder()),
+                validator: (value) =>
+                    value!.isEmpty ? 'يرجى إدخال اسم العميل' : null,
               ),
               const SizedBox(height: 16),
               DropdownButtonFormField<String>(
                 value: _selectedType,
-                decoration: const InputDecoration(labelText: 'نوع العميل', border: OutlineInputBorder()),
+                decoration: const InputDecoration(
+                    labelText: 'نوع العميل', border: OutlineInputBorder()),
                 items: [
-                  DropdownMenuItem(value: 'buyer', child: Text('مشتري', textAlign: TextAlign.right)),
-                  DropdownMenuItem(value: 'supplier', child: Text('مورد', textAlign: TextAlign.right)),
+                  DropdownMenuItem(
+                      value: 'buyer',
+                      child: Text('مشتري', textAlign: TextAlign.right)),
+                  DropdownMenuItem(
+                      value: 'supplier',
+                      child: Text('مورد', textAlign: TextAlign.right)),
                 ],
                 onChanged: (value) => setState(() => _selectedType = value!),
-                validator: (value) => value == null ? 'يرجى اختيار نوع العميل' : null,
+                validator: (value) =>
+                    value == null ? 'يرجى اختيار نوع العميل' : null,
               ),
               const SizedBox(height: 16),
               TextFormField(
                 controller: _phoneController,
                 textAlign: TextAlign.right,
                 keyboardType: TextInputType.phone,
-                decoration: const InputDecoration(labelText: 'رقم الهاتف', border: OutlineInputBorder()),
-                validator: (value) => value!.isEmpty ? 'يرجى إدخال رقم الهاتف' : null,
+                decoration: const InputDecoration(
+                    labelText: 'رقم الهاتف', border: OutlineInputBorder()),
+                validator: (value) =>
+                    value!.isEmpty ? 'يرجى إدخال رقم الهاتف' : null,
               ),
               const SizedBox(height: 16),
               TextFormField(
                 controller: _emailController,
                 textAlign: TextAlign.right,
                 keyboardType: TextInputType.emailAddress,
-                decoration: const InputDecoration(labelText: 'البريد الإلكتروني', border: OutlineInputBorder()),
-                validator: (value) => value!.isEmpty || !value.contains('@') ? 'يرجى إدخال بريد إلكتروني صحيح' : null,
+                decoration: const InputDecoration(
+                    labelText: 'البريد الإلكتروني',
+                    border: OutlineInputBorder()),
+                validator: (value) => value!.isEmpty || !value.contains('@')
+                    ? 'يرجى إدخال بريد إلكتروني صحيح'
+                    : null,
               ),
             ],
           ),
         ),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text('إلغاء')),
+        TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('إلغاء')),
         ElevatedButton(
           onPressed: () {
             if (_formKey.currentState!.validate()) {
               final client = Client(
-                id: widget.client?.id ?? DateTime.now().millisecondsSinceEpoch.toString(),
+                id: widget.client?.id ??
+                    DateTime.now().millisecondsSinceEpoch.toString(),
                 name: _nameController.text,
                 phone: _phoneController.text,
                 email: _emailController.text,
                 type: _selectedType,
                 balance: widget.client?.balance ?? 0.0,
+                invoiceState: widget
+                    .client?.invoiceState, // Preserve existing state if editing
               );
               Navigator.pop(context, client);
             }

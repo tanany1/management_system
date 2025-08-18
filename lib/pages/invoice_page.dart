@@ -27,11 +27,18 @@ class _InvoicePageState extends State<InvoicePage> {
         categoryId: 'piece',
         quantity: 1,
         price: 0.0,
-        purchasePrice: 0.0),
+        purchasePrice: 0.0,
+        customPrice: 0.0),
   ];
+  String _invoiceState = 'postponed'; // Default state
+  double _paidAmount = 0.0; // For partially paid state
 
   double get totalAmount {
-    return items.fold(0.0, (sum, item) => sum + (item.quantity * item.price));
+    return items.fold(0.0, (sum, item) => sum + (item.quantity * (item.customPrice > 0 ? item.customPrice : item.price)));
+  }
+
+  double get remainingAmount {
+    return totalAmount - _paidAmount;
   }
 
   void addNewItem() {
@@ -42,7 +49,8 @@ class _InvoicePageState extends State<InvoicePage> {
           categoryId: 'piece',
           quantity: 1,
           price: 0.0,
-          purchasePrice: 0.0));
+          purchasePrice: 0.0,
+          customPrice: 0.0));
     });
   }
 
@@ -65,7 +73,7 @@ class _InvoicePageState extends State<InvoicePage> {
             email: '',
             type: 'buyer',
             balance: 0.0));
-    final font = await pw.Font.ttf((await _loadFontData()));
+    final font = pw.Font.ttf((await _loadFontData()));
 
     final pdf = pw.Document();
     pdf.addPage(pw.Page(
@@ -88,6 +96,18 @@ class _InvoicePageState extends State<InvoicePage> {
             pw.Text('التاريخ: ${DateTime.now().toString().substring(0, 10)}',
                 style: pw.TextStyle(font: font),
                 textDirection: pw.TextDirection.rtl),
+            pw.Text('حالة الفاتورة: $_invoiceState',
+                style: pw.TextStyle(font: font),
+                textDirection: pw.TextDirection.rtl),
+            pw.Text('المبلغ الإجمالي: ${totalAmount.toStringAsFixed(2)} ج.م',
+                style: pw.TextStyle(font: font),
+                textDirection: pw.TextDirection.rtl),
+            pw.Text('المبلغ المدفوع: ${_paidAmount.toStringAsFixed(2)} ج.م',
+                style: pw.TextStyle(font: font),
+                textDirection: pw.TextDirection.rtl),
+            pw.Text('المبلغ المتبقي: ${remainingAmount.toStringAsFixed(2)} ج.م',
+                style: pw.TextStyle(font: font),
+                textDirection: pw.TextDirection.rtl),
             pw.SizedBox(height: 20),
             pw.Text('المنتجات:',
                 style: pw.TextStyle(font: font, fontWeight: pw.FontWeight.bold),
@@ -96,15 +116,20 @@ class _InvoicePageState extends State<InvoicePage> {
               border: pw.TableBorder.all(),
               columnWidths: {
                 0: const pw.FixedColumnWidth(100), // الإجمالي
-                1: const pw.FixedColumnWidth(100), // سعر الوحدة
-                2: const pw.FixedColumnWidth(100), // الكمية
-                3: const pw.FlexColumnWidth(), // اسم المنتج
-                4: const pw.FixedColumnWidth(50), // #
+                1: const pw.FixedColumnWidth(100), // السعر المخصص
+                2: const pw.FixedColumnWidth(100), // سعر الوحدة
+                3: const pw.FixedColumnWidth(100), // الكمية
+                4: const pw.FlexColumnWidth(), // اسم المنتج
+                5: const pw.FixedColumnWidth(50), // #
               },
               children: [
                 pw.TableRow(
                   children: [
                     pw.Text('الإجمالي',
+                        style: pw.TextStyle(font: font),
+                        textAlign: pw.TextAlign.center,
+                        textDirection: pw.TextDirection.rtl),
+                    pw.Text('السعر المخصص',
                         style: pw.TextStyle(font: font),
                         textAlign: pw.TextAlign.center,
                         textDirection: pw.TextDirection.rtl),
@@ -132,7 +157,11 @@ class _InvoicePageState extends State<InvoicePage> {
                   return pw.TableRow(
                     children: [
                       pw.Text(
-                          '${(item.quantity * item.price).toStringAsFixed(2)} ج.م',
+                          '${(item.quantity * (item.customPrice > 0 ? item.customPrice : item.price)).toStringAsFixed(2)} ج.م',
+                          style: pw.TextStyle(font: font),
+                          textAlign: pw.TextAlign.center,
+                          textDirection: pw.TextDirection.rtl),
+                      pw.Text('${item.customPrice.toStringAsFixed(2)} ج.م',
                           style: pw.TextStyle(font: font),
                           textAlign: pw.TextAlign.center,
                           textDirection: pw.TextDirection.rtl),
@@ -157,10 +186,6 @@ class _InvoicePageState extends State<InvoicePage> {
                 }),
               ],
             ),
-            pw.SizedBox(height: 20),
-            pw.Text('المبلغ الإجمالي: ${totalAmount.toStringAsFixed(2)} ج.م',
-                style: pw.TextStyle(font: font, fontWeight: pw.FontWeight.bold),
-                textDirection: pw.TextDirection.rtl),
           ],
         ),
       ),
@@ -178,77 +203,113 @@ class _InvoicePageState extends State<InvoicePage> {
 
   void _saveInvoice(BuildContext context) {
     if (_formKey.currentState!.validate() && _selectedClientId != null) {
-      final provider = context.read<DataProvider>();
-      // Update client balance
-      if (_isDeferred) {
-        final client =
-            provider.clients.firstWhere((c) => c.id == _selectedClientId);
-        provider.updateClient(Client(
-          id: client.id,
-          name: client.name,
-          phone: client.phone,
-          email: client.email,
-          type: client.type,
-          balance: client.balance - totalAmount,
-        ));
-      }
-      // Update product quantities
-      for (var item in items) {
-        final productIndex =
-            provider.products.indexWhere((p) => p.id == item.productId);
-        if (productIndex != -1) {
-          final product = provider.products[productIndex];
-          if (product.quantity >= item.quantity) {
-            provider.updateProduct(Product(
-              id: product.id,
-              name: product.name,
-              barcode: product.barcode,
-              price: product.price,
-              purchasePrice: product.purchasePrice,
-              quantity: product.quantity - item.quantity,
-              categoryId: product.categoryId,
-            ));
-          } else {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                  content: Text('الكمية غير كافية للمنتج: ${product.name}')),
-            );
-            return;
-          }
+      _showSaveOptionsDialog(context);
+    }
+  }
+
+  void _showSaveOptionsDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('خيارات الحفظ', textAlign: TextAlign.right),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextButton(
+              onPressed: () {
+                _performSave(context, false);
+                Navigator.pop(context);
+              },
+              child: const Text('حفظ فقط'),
+            ),
+            TextButton(
+              onPressed: () {
+                _performSave(context, true);
+                Navigator.pop(context);
+              },
+              child: const Text('حفظ وطباعة'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _performSave(BuildContext context, bool shouldPrint) {
+    final provider = context.read<DataProvider>();
+    final client = provider.clients.firstWhere((c) => c.id == _selectedClientId);
+    if (_isDeferred) {
+      provider.updateClient(Client(
+        id: client.id,
+        name: client.name,
+        phone: client.phone,
+        email: client.email,
+        type: client.type,
+        balance: client.balance - (_invoiceState == 'partially paid' ? _paidAmount : totalAmount),
+        invoiceState: _invoiceState,
+      ));
+    }
+    for (var item in items) {
+      final productIndex =
+      provider.products.indexWhere((p) => p.id == item.productId);
+      if (productIndex != -1) {
+        final product = provider.products[productIndex];
+        if (product.quantity >= item.quantity) {
+          provider.updateProduct(Product(
+            id: product.id,
+            name: product.name,
+            barcode: product.barcode,
+            price: product.price,
+            purchasePrice: product.purchasePrice,
+            quantity: product.quantity - item.quantity,
+            categoryId: product.categoryId,
+          ));
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+                content: Text('الكمية غير كافية للمنتج: ${product.name}')),
+          );
+          return;
         }
       }
-      // Save invoice
-      final invoice = Invoice(
-        id: DateTime.now().millisecondsSinceEpoch.toString(),
-        invoiceNumber: _invoiceNumberController.text,
-        clientId: _selectedClientId!,
-        isDeferred: _isDeferred,
-        items: items,
-        type: 'outgoing',
-        date: DateTime.now(),
-      );
-      provider.addInvoice(invoice);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('تم حفظ فاتورة الصادر بنجاح')),
-      );
-      // Reset form
-      _formKey.currentState?.reset();
-      _invoiceNumberController.text =
-          'INV-${DateTime.now().millisecondsSinceEpoch}';
-      setState(() {
-        items = [
-          InvoiceItem(
-              productId: '',
-              name: '',
-              categoryId: 'piece',
-              quantity: 1,
-              price: 0.0,
-              purchasePrice: 0.0)
-        ];
-        _selectedClientId = null;
-        _isDeferred = false;
-      });
     }
+    final invoice = Invoice(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      invoiceNumber: _invoiceNumberController.text,
+      clientId: _selectedClientId!,
+      isDeferred: _isDeferred,
+      items: items,
+      type: 'outgoing',
+      date: DateTime.now(),
+      state: _invoiceState,
+      paidAmount: _paidAmount,
+    );
+    provider.addInvoice(invoice);
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('تم حفظ فاتورة الصادر بنجاح')),
+    );
+    if (shouldPrint) {
+      _generateAndPrintPDF(context, '${_invoiceNumberController.text}.pdf');
+    }
+    _formKey.currentState?.reset();
+    _invoiceNumberController.text =
+    'INV-${DateTime.now().millisecondsSinceEpoch}';
+    setState(() {
+      items = [
+        InvoiceItem(
+            productId: '',
+            name: '',
+            categoryId: 'piece',
+            quantity: 1,
+            price: 0.0,
+            purchasePrice: 0.0,
+            customPrice: 0.0)
+      ];
+      _selectedClientId = null;
+      _isDeferred = false;
+      _invoiceState = 'postponed';
+      _paidAmount = 0.0;
+    });
   }
 
   void _showInvoiceDialog(BuildContext context) {
@@ -276,6 +337,13 @@ class _InvoicePageState extends State<InvoicePage> {
               Text('العميل: ${client.name}', textAlign: TextAlign.right),
               Text('التاريخ: ${DateTime.now().toString().substring(0, 10)}',
                   textAlign: TextAlign.right),
+              Text('حالة الفاتورة: $_invoiceState', textAlign: TextAlign.right),
+              Text('المبلغ الإجمالي: ${totalAmount.toStringAsFixed(2)} ج.م',
+                  textAlign: TextAlign.right),
+              Text('المبلغ المدفوع: ${_paidAmount.toStringAsFixed(2)} ج.م',
+                  textAlign: TextAlign.right),
+              Text('المبلغ المتبقي: ${remainingAmount.toStringAsFixed(2)} ج.م',
+                  textAlign: TextAlign.right),
               const SizedBox(height: 20),
               const Text('المنتجات:',
                   style: TextStyle(fontWeight: FontWeight.bold),
@@ -286,7 +354,7 @@ class _InvoicePageState extends State<InvoicePage> {
                 return Padding(
                   padding: const EdgeInsets.symmetric(vertical: 4.0),
                   child: Text(
-                    '${index + 1}. ${item.name} - الكمية: ${item.quantity} - السعر: ${item.price.toStringAsFixed(2)} ج.م - الإجمالي: ${(item.quantity * item.price).toStringAsFixed(2)} ج.م',
+                    '${index + 1}. ${item.name} - الكمية: ${item.quantity} - السعر: ${(item.customPrice > 0 ? item.customPrice : item.price).toStringAsFixed(2)} ج.م - الإجمالي: ${(item.quantity * (item.customPrice > 0 ? item.customPrice : item.price)).toStringAsFixed(2)} ج.م',
                     textAlign: TextAlign.right,
                   ),
                 );
@@ -334,10 +402,10 @@ class _InvoicePageState extends State<InvoicePage> {
                           .read<DataProvider>()
                           .products
                           .where((product) =>
-                              product.name
-                                  .toLowerCase()
-                                  .contains(value.toLowerCase()) ||
-                              product.barcode.contains(value))
+                      product.name
+                          .toLowerCase()
+                          .contains(value.toLowerCase()) ||
+                          product.barcode.contains(value))
                           .toList();
                     });
                   },
@@ -361,6 +429,7 @@ class _InvoicePageState extends State<InvoicePage> {
                             items[index].categoryId = product.categoryId;
                             items[index].price = product.price;
                             items[index].purchasePrice = product.purchasePrice;
+                            items[index].customPrice = product.price;
                           });
                           Navigator.pop(context);
                         },
@@ -388,7 +457,7 @@ class _InvoicePageState extends State<InvoicePage> {
     final products = provider.products;
     final categories = provider.categories;
     final clients =
-        provider.clients.where((client) => client.type == 'buyer').toList();
+    provider.clients.where((client) => client.type == 'buyer').toList();
     return Directionality(
       textDirection: TextDirection.ltr,
       child: Padding(
@@ -404,7 +473,7 @@ class _InvoicePageState extends State<InvoicePage> {
                       onPressed: () {
                         _formKey.currentState?.reset();
                         _invoiceNumberController.text =
-                            'INV-${DateTime.now().millisecondsSinceEpoch}';
+                        'INV-${DateTime.now().millisecondsSinceEpoch}';
                         setState(() {
                           items = [
                             InvoiceItem(
@@ -413,10 +482,13 @@ class _InvoicePageState extends State<InvoicePage> {
                                 categoryId: 'piece',
                                 quantity: 1,
                                 price: 0.0,
-                                purchasePrice: 0.0)
+                                purchasePrice: 0.0,
+                                customPrice: 0.0)
                           ];
                           _selectedClientId = null;
                           _isDeferred = false;
+                          _invoiceState = 'postponed';
+                          _paidAmount = 0.0;
                         });
                       },
                       icon: const Icon(Icons.add, color: Colors.white),
@@ -428,21 +500,9 @@ class _InvoicePageState extends State<InvoicePage> {
                     const SizedBox(width: 10),
                     ElevatedButton.icon(
                       onPressed: _selectedClientId != null &&
-                              items.every((item) => item.productId.isNotEmpty)
-                          ? () => _showInvoiceDialog(context)
-                          : null,
-                      icon: const Icon(Icons.visibility, color: Colors.white),
-                      label: const Text('عرض الفاتورة',
-                          style: TextStyle(color: Colors.white)),
-                      style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.blue),
-                    ),
-                    const SizedBox(width: 10),
-                    ElevatedButton.icon(
-                      onPressed: _selectedClientId != null &&
-                              items.every((item) => item.productId.isNotEmpty)
+                          items.every((item) => item.productId.isNotEmpty)
                           ? () => _generateAndPrintPDF(
-                              context, '${_invoiceNumberController.text}.pdf')
+                          context, '${_invoiceNumberController.text}.pdf')
                           : null,
                       icon: const Icon(Icons.print, color: Colors.white),
                       label: const Text('طباعة/تصدير PDF',
@@ -454,7 +514,7 @@ class _InvoicePageState extends State<InvoicePage> {
                 ),
                 const Text('الصادر',
                     style:
-                        TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+                    TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
               ],
             ),
             const SizedBox(height: 20),
@@ -516,15 +576,15 @@ class _InvoicePageState extends State<InvoicePage> {
                                   border: OutlineInputBorder()),
                               items: clients
                                   .map((client) => DropdownMenuItem(
-                                        value: client.id,
-                                        child: Text(client.name,
-                                            textAlign: TextAlign.right),
-                                      ))
+                                value: client.id,
+                                child: Text(client.name,
+                                    textAlign: TextAlign.right),
+                              ))
                                   .toList(),
                               onChanged: (value) =>
                                   setState(() => _selectedClientId = value),
                               validator: (value) =>
-                                  value == null ? 'يرجى اختيار عميل' : null,
+                              value == null ? 'يرجى اختيار عميل' : null,
                             ),
                           ),
                         ],
@@ -533,14 +593,57 @@ class _InvoicePageState extends State<InvoicePage> {
                       Row(
                         children: [
                           Checkbox(
-                            value: _isDeferred,
-                            onChanged: (value) =>
-                                setState(() => _isDeferred = value!),
+                            value: _invoiceState == 'fully paid',
+                            onChanged: (value) => setState(() {
+                              _invoiceState = 'fully paid';
+                              _paidAmount = totalAmount;
+                            }),
                           ),
-                          const Text('دفع مؤجل',
+                          const Text('خالص',
+                              style: TextStyle(fontWeight: FontWeight.bold)),
+                          const SizedBox(width: 20),
+                          Checkbox(
+                            value: _invoiceState == 'partially paid',
+                            onChanged: (value) => setState(() {
+                              _invoiceState = 'partially paid';
+                            }),
+                          ),
+                          const Text('جزئي',
+                              style: TextStyle(fontWeight: FontWeight.bold)),
+                          const SizedBox(width: 20),
+                          Checkbox(
+                            value: _invoiceState == 'postponed',
+                            onChanged: (value) => setState(() {
+                              _invoiceState = 'postponed';
+                              _paidAmount = 0.0;
+                            }),
+                          ),
+                          const Text('مؤجل',
                               style: TextStyle(fontWeight: FontWeight.bold)),
                         ],
                       ),
+                      if (_invoiceState == 'partially paid')
+                        Padding(
+                          padding: const EdgeInsets.only(top: 10.0),
+                          child: TextFormField(
+                            keyboardType: TextInputType.number,
+                            textAlign: TextAlign.right,
+                            decoration: const InputDecoration(
+                              labelText: 'المبلغ المدفوع',
+                              border: OutlineInputBorder(),
+                            ),
+                            validator: (value) => double.tryParse(value ?? '') == null || double.parse(value!) < 0
+                                ? 'يرجى إدخال مبلغ صحيح'
+                                : double.parse(value) > totalAmount
+                                ? 'المبلغ المدفوع لا يمكن أن يتجاوز الإجمالي'
+                                : null,
+                            onChanged: (value) {
+                              setState(() {
+                                _paidAmount = double.tryParse(value) ?? 0.0;
+                              });
+                            },
+                          ),
+                        ),
                       const SizedBox(height: 20),
                       Container(
                         width: double.infinity,
@@ -563,13 +666,13 @@ class _InvoicePageState extends State<InvoicePage> {
                           itemCount: items.length,
                           itemBuilder: (context, index) {
                             final filteredProducts =
-                                items[index].categoryId.isEmpty
-                                    ? products
-                                    : products
-                                        .where((product) =>
-                                            product.categoryId ==
-                                            items[index].categoryId)
-                                        .toList();
+                            items[index].categoryId.isEmpty
+                                ? products
+                                : products
+                                .where((product) =>
+                            product.categoryId ==
+                                items[index].categoryId)
+                                .toList();
                             return Container(
                               margin: const EdgeInsets.only(bottom: 10),
                               padding: const EdgeInsets.all(12),
@@ -591,16 +694,16 @@ class _InvoicePageState extends State<InvoicePage> {
                                       keyboardType: TextInputType.number,
                                       textAlign: TextAlign.center,
                                       initialValue:
-                                          items[index].quantity.toString(),
+                                      items[index].quantity.toString(),
                                       decoration: const InputDecoration(
                                         labelText: 'الكمية',
                                         border: OutlineInputBorder(),
                                       ),
                                       validator: (value) =>
-                                          int.tryParse(value ?? '') == null ||
-                                                  int.parse(value!) <= 0
-                                              ? 'يرجى إدخال كمية صحيحة'
-                                              : null,
+                                      int.tryParse(value ?? '') == null ||
+                                          int.parse(value!) <= 0
+                                          ? 'يرجى إدخال كمية صحيحة'
+                                          : null,
                                       onChanged: (value) {
                                         setState(() {
                                           items[index].quantity =
@@ -612,27 +715,47 @@ class _InvoicePageState extends State<InvoicePage> {
                                   const SizedBox(width: 10),
                                   Expanded(
                                     flex: 2,
+                                    child: TextFormField(
+                                      keyboardType: TextInputType.number,
+                                      textAlign: TextAlign.center,
+                                      initialValue: items[index].customPrice.toStringAsFixed(2),
+                                      decoration: const InputDecoration(
+                                        labelText: 'السعر المخصص',
+                                        border: OutlineInputBorder(),
+                                      ),
+                                      validator: (value) => double.tryParse(value ?? '') == null || double.parse(value!) < 0
+                                          ? 'يرجى إدخال سعر صحيح'
+                                          : null,
+                                      onChanged: (value) {
+                                        setState(() {
+                                          items[index].customPrice = double.tryParse(value) ?? items[index].price;
+                                        });
+                                      },
+                                    ),
+                                  ),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    flex: 2,
                                     child: DropdownButtonFormField<String>(
                                       value: categories.any((c) =>
-                                              c.id == items[index].categoryId)
+                                      c.id == items[index].categoryId)
                                           ? items[index].categoryId
                                           : null,
-                                      // Use null if 'piece' isn't found
                                       decoration: const InputDecoration(
                                           labelText: 'التصنيف',
                                           border: OutlineInputBorder()),
                                       items: [
                                         const DropdownMenuItem(
                                             value: null,
-                                            child: Text('جميع التصنيفات',
+                                            child: Text('اختر تصنيف',
                                                 textAlign: TextAlign.right)),
                                         ...categories
                                             .map((category) => DropdownMenuItem(
-                                                  value: category.id,
-                                                  child: Text(category.name,
-                                                      textAlign:
-                                                          TextAlign.right),
-                                                )),
+                                          value: category.id,
+                                          child: Text(category.name,
+                                              textAlign:
+                                              TextAlign.right),
+                                        )),
                                       ],
                                       onChanged: (value) {
                                         setState(() {
@@ -644,6 +767,7 @@ class _InvoicePageState extends State<InvoicePage> {
                                           items[index].name = '';
                                           items[index].price = 0.0;
                                           items[index].purchasePrice = 0.0;
+                                          items[index].customPrice = 0.0;
                                         });
                                       },
                                     ),
@@ -655,23 +779,23 @@ class _InvoicePageState extends State<InvoicePage> {
                                       children: [
                                         Expanded(
                                           child:
-                                              DropdownButtonFormField<String>(
+                                          DropdownButtonFormField<String>(
                                             value:
-                                                items[index].productId.isEmpty
-                                                    ? null
-                                                    : items[index].productId,
+                                            items[index].productId.isEmpty
+                                                ? null
+                                                : items[index].productId,
                                             decoration: const InputDecoration(
                                                 labelText: 'المنتج',
                                                 border: OutlineInputBorder()),
                                             items: filteredProducts
                                                 .map((product) =>
-                                                    DropdownMenuItem(
-                                                      value: product.id,
-                                                      child: Text(
-                                                          '${product.name} (${product.categoryId})',
-                                                          textAlign:
-                                                              TextAlign.right),
-                                                    ))
+                                                DropdownMenuItem(
+                                                  value: product.id,
+                                                  child: Text(
+                                                      '${product.name} (${product.categoryId})',
+                                                      textAlign:
+                                                      TextAlign.right),
+                                                ))
                                                 .toList(),
                                             validator: (value) => value == null
                                                 ? 'يرجى اختيار منتج'
@@ -679,7 +803,7 @@ class _InvoicePageState extends State<InvoicePage> {
                                             onChanged: (value) {
                                               setState(() {
                                                 final selectedProduct =
-                                                    products.firstWhere(
+                                                products.firstWhere(
                                                         (p) => p.id == value);
                                                 items[index].productId = value!;
                                                 items[index].name =
@@ -691,6 +815,8 @@ class _InvoicePageState extends State<InvoicePage> {
                                                 items[index].purchasePrice =
                                                     selectedProduct
                                                         .purchasePrice;
+                                                items[index].customPrice =
+                                                    selectedProduct.price;
                                               });
                                             },
                                           ),
@@ -747,6 +873,44 @@ class _InvoicePageState extends State<InvoicePage> {
                                         fontWeight: FontWeight.bold)),
                               ],
                             ),
+                            if (_invoiceState == 'partially paid' || _invoiceState == 'fully paid')
+                              Column(
+                                children: [
+                                  const SizedBox(height: 8),
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Text(
+                                        '${_paidAmount.toStringAsFixed(2)} ج.م',
+                                        style: const TextStyle(
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.blue),
+                                      ),
+                                      const Text('المبلغ المدفوع:',
+                                          style: TextStyle(
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.bold)),
+                                    ],
+                                  ),
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Text(
+                                        '${remainingAmount.toStringAsFixed(2)} ج.م',
+                                        style: const TextStyle(
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.red),
+                                      ),
+                                      const Text('المبلغ المتبقي:',
+                                          style: TextStyle(
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.bold)),
+                                    ],
+                                  ),
+                                ],
+                              ),
                             const SizedBox(height: 16),
                             Row(
                               children: [

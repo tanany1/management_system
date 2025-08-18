@@ -44,6 +44,8 @@ class Client {
   final String type;
   @HiveField(5)
   final double balance;
+  @HiveField(6)
+  String? invoiceState; // Added for feature 2
 
   Client({
     required this.id,
@@ -52,6 +54,7 @@ class Client {
     required this.email,
     required this.type,
     this.balance = 0.0,
+    this.invoiceState,
   });
 }
 
@@ -79,6 +82,8 @@ class InvoiceItem {
   double price;
   @HiveField(5)
   double purchasePrice;
+  @HiveField(6)
+  double customPrice; // Added for feature 4
 
   InvoiceItem({
     required this.productId,
@@ -87,6 +92,7 @@ class InvoiceItem {
     required this.quantity,
     required this.price,
     required this.purchasePrice,
+    this.customPrice = 0.0, // Default to 0.0
   });
 }
 
@@ -106,6 +112,10 @@ class Invoice {
   final String type; // 'outgoing' or 'incoming'
   @HiveField(6)
   final DateTime date;
+  @HiveField(7)
+  String? state; // Added for feature 2 (fully paid, partially paid, postponed)
+  @HiveField(8)
+  double? paidAmount; // Added for feature 5
 
   Invoice({
     required this.id,
@@ -115,5 +125,7 @@ class Invoice {
     required this.items,
     required this.type,
     required this.date,
+    this.state,
+    this.paidAmount,
   });
 }

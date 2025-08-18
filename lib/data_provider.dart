@@ -9,8 +9,11 @@ class DataProvider with ChangeNotifier {
   List<Invoice> _invoices = [];
 
   List<Product> get products => _products;
+
   List<Client> get clients => _clients;
+
   List<Category> get categories => _categories;
+
   List<Invoice> get invoices => _invoices;
 
   DataProvider() {
@@ -23,35 +26,57 @@ class DataProvider with ChangeNotifier {
     _categories = HiveService.categoriesBox.values.toList();
     _invoices = HiveService.invoicesBox.values.toList();
 
-    // Initialize with sample data if empty
     if (_categories.isEmpty) {
       _categories = [
         Category(id: '1', name: 'كرتونة'),
         Category(id: '2', name: 'علبة'),
         Category(id: '3', name: 'يكن'),
-        Category(id: 'piece', name: 'قطعة'), // Added 'piece' category
+        Category(id: 'piece', name: 'قطعة'),
       ];
-      // Save categories to Hive directly
       for (var category in _categories) {
         HiveService.categoriesBox.put(category.id, category);
       }
     }
     if (_products.isEmpty) {
       _products = [
-        Product(id: '1', name: 'لابتوب HP', barcode: '1234567890', price: 15000.0, purchasePrice: 12000.0, quantity: 10, categoryId: '1'),
-        Product(id: '2', name: 'ماوس لاسلكي', barcode: '0987654321', price: 250.0, purchasePrice: 200.0, quantity: 25, categoryId: '2'),
+        Product(
+            id: '1',
+            name: 'لابتوب HP',
+            barcode: '1234567890',
+            price: 15000.0,
+            purchasePrice: 12000.0,
+            quantity: 10,
+            categoryId: '1'),
+        Product(
+            id: '2',
+            name: 'ماوس لاسلكي',
+            barcode: '0987654321',
+            price: 250.0,
+            purchasePrice: 200.0,
+            quantity: 25,
+            categoryId: '2'),
       ];
-      // Save products to Hive directly
       for (var product in _products) {
         HiveService.productsBox.put(product.id, product);
       }
     }
     if (_clients.isEmpty) {
       _clients = [
-        Client(id: '1', name: 'أحمد محمد', phone: '01234567890', email: 'ahmed@email.com', type: 'buyer', balance: 500.0),
-        Client(id: '2', name: 'فاطمة علي', phone: '01987654321', email: 'fatima@email.com', type: 'supplier', balance: -200.0),
+        Client(
+            id: '1',
+            name: 'أحمد محمد',
+            phone: '01234567890',
+            email: 'ahmed@email.com',
+            type: 'buyer',
+            balance: 500.0),
+        Client(
+            id: '2',
+            name: 'فاطمة علي',
+            phone: '01987654321',
+            email: 'fatima@email.com',
+            type: 'supplier',
+            balance: -200.0),
       ];
-      // Save clients to Hive directly
       for (var client in _clients) {
         HiveService.clientsBox.put(client.id, client);
       }
@@ -142,6 +167,21 @@ class DataProvider with ChangeNotifier {
     if (index != -1) {
       _invoices[index] = invoice;
       HiveService.invoicesBox.put(invoice.id, invoice);
+// Update client with invoice state
+      final clientIndex = _clients.indexWhere((c) => c.id == invoice.clientId);
+      if (clientIndex != -1) {
+        _clients[clientIndex] = Client(
+          id: _clients[clientIndex].id,
+          name: _clients[clientIndex].name,
+          phone: _clients[clientIndex].phone,
+          email: _clients[clientIndex].email,
+          type: _clients[clientIndex].type,
+          balance: _clients[clientIndex].balance - (invoice.paidAmount ?? 0.0),
+          invoiceState: invoice.state,
+        );
+        HiveService.clientsBox
+            .put(_clients[clientIndex].id, _clients[clientIndex]);
+      }
       notifyListeners();
     }
   }
