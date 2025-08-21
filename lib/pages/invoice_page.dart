@@ -849,6 +849,96 @@ class _InvoicePageState extends State<InvoicePage> {
                         ],
                       ),
                       const SizedBox(height: 20),
+                      Expanded(
+                        child: Card(
+                          child: Padding(
+                            padding: const EdgeInsets.all(16.0),
+                            child: SingleChildScrollView(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.end,
+                                children: [
+                                  const Text(
+                                    'معاينة الفاتورة',
+                                    style: TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.bold),
+                                    textAlign: TextAlign.right,
+                                  ),
+                                  const SizedBox(height: 10),
+                                  Table(
+                                    border: TableBorder.all(),
+                                    columnWidths: const {
+                                      0: FlexColumnWidth(1), // الإجمالي
+                                      1: FlexColumnWidth(1), // السعر المخصص
+                                      2: FlexColumnWidth(1), // سعر الوحدة
+                                      3: FlexColumnWidth(1), // الكمية
+                                      4: FlexColumnWidth(2), // اسم المنتج
+                                      5: FlexColumnWidth(0.5), // #
+                                    },
+                                    children: [
+                                      const TableRow(
+                                        children: [
+                                          Text('الإجمالي',
+                                              textAlign: TextAlign.center,
+                                              style: TextStyle(fontWeight: FontWeight.bold)),
+                                          Text('السعر المخصص',
+                                              textAlign: TextAlign.center,
+                                              style: TextStyle(fontWeight: FontWeight.bold)),
+                                          Text('سعر الوحدة',
+                                              textAlign: TextAlign.center,
+                                              style: TextStyle(fontWeight: FontWeight.bold)),
+                                          Text('الكمية',
+                                              textAlign: TextAlign.center,
+                                              style: TextStyle(fontWeight: FontWeight.bold)),
+                                          Text('اسم المنتج',
+                                              textAlign: TextAlign.center,
+                                              style: TextStyle(fontWeight: FontWeight.bold)),
+                                          Text('#',
+                                              textAlign: TextAlign.center,
+                                              style: TextStyle(fontWeight: FontWeight.bold)),
+                                        ],
+                                      ),
+                                      ...items.asMap().entries.map((entry) {
+                                        final index = entry.key;
+                                        final item = entry.value;
+                                        return TableRow(
+                                          children: [
+                                            Text(
+                                                '${(item.quantity * (item.customPrice > 0 ? item.customPrice : item.price)).toStringAsFixed(2)} ج.م',
+                                                textAlign: TextAlign.center),
+                                            Text('${item.customPrice.toStringAsFixed(2)} ج.م',
+                                                textAlign: TextAlign.center),
+                                            Text('${item.price.toStringAsFixed(2)} ج.م',
+                                                textAlign: TextAlign.center),
+                                            Text(item.quantity.toString(),
+                                                textAlign: TextAlign.center),
+                                            Text(item.name,
+                                                textAlign: TextAlign.center),
+                                            Text('${index + 1}',
+                                                textAlign: TextAlign.center),
+                                          ],
+                                        );
+                                      }),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 20),
+                                  Text('المبلغ الإجمالي: ${totalAmount.toStringAsFixed(2)} ج.م',
+                                      style: const TextStyle(fontWeight: FontWeight.bold)),
+                                  if (_invoiceState == 'partially paid' || _invoiceState == 'fully paid')
+                                    Column(
+                                      children: [
+                                        Text('المبلغ المدفوع: ${_paidAmount.toStringAsFixed(2)} ج.م',
+                                            style: const TextStyle(fontWeight: FontWeight.bold)),
+                                        Text('المبلغ المتبقي: ${remainingAmount.toStringAsFixed(2)} ج.م',
+                                            style: const TextStyle(fontWeight: FontWeight.bold)),
+                                      ],
+                                    ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
                       Container(
                         width: double.infinity,
                         padding: const EdgeInsets.all(16),

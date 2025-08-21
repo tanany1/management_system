@@ -31,8 +31,7 @@ class _ClientsPageState extends State<ClientsPage> {
       filteredClients = clients.where((client) {
         final matchesQuery =
             client.name.toLowerCase().contains(query.toLowerCase()) ||
-                client.phone.contains(query) ||
-                client.email.toLowerCase().contains(query.toLowerCase());
+                client.phone.contains(query);
         final matchesType =
             selectedType == 'all' || client.type == selectedType;
         return matchesQuery && matchesType;
@@ -90,6 +89,9 @@ class _ClientsPageState extends State<ClientsPage> {
 
   @override
   Widget build(BuildContext context) {
+    final provider = context.watch<DataProvider>();
+    final invoices = provider.invoices;
+
     return Padding(
       padding: const EdgeInsets.all(16.0),
       child: Column(
@@ -177,21 +179,14 @@ class _ClientsPageState extends State<ClientsPage> {
                                 textAlign: TextAlign.center)),
                         Expanded(
                             flex: 2,
-                            child: Text('حالة الفاتورة',
-                                style: TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.bold),
-                                textAlign: TextAlign.center)), // Added
-                        Expanded(
-                            flex: 2,
-                            child: Text('الرصيد',
+                            child: Text('دور العميل',
                                 style: TextStyle(
                                     color: Colors.white,
                                     fontWeight: FontWeight.bold),
                                 textAlign: TextAlign.center)),
                         Expanded(
-                            flex: 3,
-                            child: Text('البريد الإلكتروني',
+                            flex: 2,
+                            child: Text('الرصيد',
                                 style: TextStyle(
                                     color: Colors.white,
                                     fontWeight: FontWeight.bold),
@@ -224,99 +219,166 @@ class _ClientsPageState extends State<ClientsPage> {
                   Expanded(
                     child: filteredClients.isEmpty
                         ? const Center(
-                            child: Text('لا توجد عملاء',
-                                style: TextStyle(
-                                    fontSize: 16, color: Colors.grey)))
+                        child: Text('لا توجد عملاء',
+                            style: TextStyle(
+                                fontSize: 16, color: Colors.grey)))
                         : ListView.builder(
-                            itemCount: filteredClients.length,
-                            itemBuilder: (context, index) {
-                              final client = filteredClients[index];
-                              return Container(
-                                margin: const EdgeInsets.only(bottom: 8),
-                                padding: const EdgeInsets.all(12),
-                                decoration: BoxDecoration(
-                                  border:
-                                      Border.all(color: Colors.grey.shade300),
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: Row(
-                                  children: [
-                                    Expanded(
-                                      flex: 2,
-                                      child: Row(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.center,
-                                        children: [
-                                          IconButton(
-                                            icon: const Icon(Icons.edit,
-                                                color: Colors.blue),
-                                            onPressed: () =>
-                                                _showAddClientDialog(
-                                                    client: client),
-                                            tooltip: 'تعديل',
-                                          ),
-                                          IconButton(
-                                            icon: const Icon(Icons.delete,
-                                                color: Colors.red),
-                                            onPressed: () =>
-                                                _deleteClient(client),
-                                            tooltip: 'حذف',
-                                          ),
-                                        ],
+                      itemCount: filteredClients.length,
+                      itemBuilder: (context, index) {
+                        final client = filteredClients[index];
+                        final clientInvoices = invoices
+                            .where((invoice) =>
+                        invoice.clientId == client.id &&
+                            invoice.type == 'outgoing')
+                            .toList();
+                        return ExpansionTile(
+                          title: Container(
+                            margin: const EdgeInsets.only(bottom: 8),
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              border: Border.all(
+                                  color: Colors.grey.shade300),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  flex: 2,
+                                  child: Row(
+                                    mainAxisAlignment:
+                                    MainAxisAlignment.center,
+                                    children: [
+                                      IconButton(
+                                        icon: const Icon(Icons.edit,
+                                            color: Colors.blue),
+                                        onPressed: () =>
+                                            _showAddClientDialog(
+                                                client: client),
+                                        tooltip: 'تعديل',
                                       ),
-                                    ),
-                                    Expanded(
-                                      flex: 2,
-                                      child: Text(
-                                        client.invoiceState ?? 'لا يوجد',
-                                        textAlign: TextAlign.center,
-                                        style: const TextStyle(fontSize: 14),
-                                      ), // Added invoice state display
-                                    ),
-                                    Expanded(
-                                      flex: 2,
-                                      child: Text(
-                                        '${client.balance.toStringAsFixed(2)} ج.م',
-                                        textAlign: TextAlign.center,
-                                        style: TextStyle(
-                                          fontSize: 14,
-                                          color: client.balance >= 0
-                                              ? Colors.green
-                                              : Colors.red,
-                                          fontWeight: FontWeight.bold,
-                                        ),
+                                      IconButton(
+                                        icon: const Icon(Icons.delete,
+                                            color: Colors.red),
+                                        onPressed: () =>
+                                            _deleteClient(client),
+                                        tooltip: 'حذف',
                                       ),
-                                    ),
-                                    Expanded(
-                                        flex: 3,
-                                        child: Text(client.email,
-                                            textAlign: TextAlign.center,
-                                            style:
-                                                const TextStyle(fontSize: 14))),
-                                    Expanded(
-                                        flex: 2,
-                                        child: Text(client.phone,
-                                            textAlign: TextAlign.center,
-                                            style:
-                                                const TextStyle(fontSize: 14))),
-                                    Expanded(
-                                        flex: 3,
-                                        child: Text(client.name,
-                                            textAlign: TextAlign.center,
-                                            style: const TextStyle(
-                                                fontSize: 14,
-                                                fontWeight: FontWeight.bold))),
-                                    Expanded(
-                                        flex: 1,
-                                        child: Text(client.id,
-                                            textAlign: TextAlign.center,
-                                            style:
-                                                const TextStyle(fontSize: 14))),
-                                  ],
+                                    ],
+                                  ),
                                 ),
-                              );
-                            },
+                                Expanded(
+                                  flex: 2,
+                                  child: Text(
+                                    client.type == 'buyer'
+                                        ? 'مشتري'
+                                        : 'مورد',
+                                    textAlign: TextAlign.center,
+                                    style: const TextStyle(fontSize: 14),
+                                  ),
+                                ),
+                                Expanded(
+                                  flex: 2,
+                                  child: Text(
+                                    '${client.balance.toStringAsFixed(2)} ج.م',
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      color: client.balance >= 0
+                                          ? Colors.green
+                                          : Colors.red,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                                Expanded(
+                                    flex: 2,
+                                    child: Text(client.phone,
+                                        textAlign: TextAlign.center,
+                                        style: const TextStyle(
+                                            fontSize: 14))),
+                                Expanded(
+                                    flex: 3,
+                                    child: Text(client.name,
+                                        textAlign: TextAlign.center,
+                                        style: const TextStyle(
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.bold))),
+                                Expanded(
+                                    flex: 1,
+                                    child: Text(client.id,
+                                        textAlign: TextAlign.center,
+                                        style: const TextStyle(
+                                            fontSize: 14))),
+                              ],
+                            ),
                           ),
+                          children: [
+                            if (clientInvoices.isEmpty)
+                              const Padding(
+                                padding: EdgeInsets.all(8.0),
+                                child: Text('لا توجد فواتير لهذا العميل',
+                                    textAlign: TextAlign.center),
+                              )
+                            else
+                              ...clientInvoices.map((invoice) {
+                                double invoiceTotal = invoice.items.fold(
+                                    0.0,
+                                        (sum, item) => sum +
+                                        (item.quantity *
+                                            (item.customPrice > 0
+                                                ? item.customPrice
+                                                : item.price)));
+                                return Container(
+                                  margin: const EdgeInsets.symmetric(
+                                      horizontal: 16, vertical: 4),
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    border: Border.all(
+                                        color: Colors.grey.shade200),
+                                    borderRadius:
+                                    BorderRadius.circular(4),
+                                  ),
+                                  child: Row(
+                                    textDirection: TextDirection.rtl,
+                                    children: [
+                                      Expanded(
+                                          flex: 2,
+                                          child: Text(
+                                              invoice.invoiceNumber,
+                                              textAlign: TextAlign.center,
+                                              style: const TextStyle(
+                                                  fontSize: 12))),
+                                      Expanded(
+                                          flex: 2,
+                                          child: Text(
+                                              invoice.date
+                                                  .toString()
+                                                  .substring(0, 10),
+                                              textAlign: TextAlign.center,
+                                              style: const TextStyle(
+                                                  fontSize: 12))),
+                                      Expanded(
+                                          flex: 2,
+                                          child: Text(
+                                              '${invoiceTotal.toStringAsFixed(2)} ج.م',
+                                              textAlign: TextAlign.center,
+                                              style: const TextStyle(
+                                                  fontSize: 12))),
+                                      Expanded(
+                                          flex: 2,
+                                          child: Text(
+                                              invoice.state ?? 'مؤجل',
+                                              textAlign: TextAlign.center,
+                                              style: const TextStyle(
+                                                  fontSize: 12))),
+                                    ],
+                                  ),
+                                );
+                              }).toList(),
+                          ],
+                        );
+                      },
+                    ),
                   ),
                 ],
               ),
@@ -325,6 +387,12 @@ class _ClientsPageState extends State<ClientsPage> {
         ],
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 }
 
@@ -341,7 +409,6 @@ class _AddClientDialogState extends State<AddClientDialog> {
   final _formKey = GlobalKey<FormState>();
   late TextEditingController _nameController;
   late TextEditingController _phoneController;
-  late TextEditingController _emailController;
   String _selectedType = 'buyer';
 
   @override
@@ -349,7 +416,6 @@ class _AddClientDialogState extends State<AddClientDialog> {
     super.initState();
     _nameController = TextEditingController(text: widget.client?.name ?? '');
     _phoneController = TextEditingController(text: widget.client?.phone ?? '');
-    _emailController = TextEditingController(text: widget.client?.email ?? '');
     _selectedType = widget.client?.type ?? 'buyer';
   }
 
@@ -371,14 +437,14 @@ class _AddClientDialogState extends State<AddClientDialog> {
                 decoration: const InputDecoration(
                     labelText: 'اسم العميل', border: OutlineInputBorder()),
                 validator: (value) =>
-                    value!.isEmpty ? 'يرجى إدخال اسم العميل' : null,
+                value!.isEmpty ? 'يرجى إدخال اسم العميل' : null,
               ),
               const SizedBox(height: 16),
               DropdownButtonFormField<String>(
                 value: _selectedType,
                 decoration: const InputDecoration(
                     labelText: 'نوع العميل', border: OutlineInputBorder()),
-                items: [
+                items: const [
                   DropdownMenuItem(
                       value: 'buyer',
                       child: Text('مشتري', textAlign: TextAlign.right)),
@@ -388,7 +454,7 @@ class _AddClientDialogState extends State<AddClientDialog> {
                 ],
                 onChanged: (value) => setState(() => _selectedType = value!),
                 validator: (value) =>
-                    value == null ? 'يرجى اختيار نوع العميل' : null,
+                value == null ? 'يرجى اختيار نوع العميل' : null,
               ),
               const SizedBox(height: 16),
               TextFormField(
@@ -398,19 +464,7 @@ class _AddClientDialogState extends State<AddClientDialog> {
                 decoration: const InputDecoration(
                     labelText: 'رقم الهاتف', border: OutlineInputBorder()),
                 validator: (value) =>
-                    value!.isEmpty ? 'يرجى إدخال رقم الهاتف' : null,
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _emailController,
-                textAlign: TextAlign.right,
-                keyboardType: TextInputType.emailAddress,
-                decoration: const InputDecoration(
-                    labelText: 'البريد الإلكتروني',
-                    border: OutlineInputBorder()),
-                validator: (value) => value!.isEmpty || !value.contains('@')
-                    ? 'يرجى إدخال بريد إلكتروني صحيح'
-                    : null,
+                value!.isEmpty ? 'يرجى إدخال رقم الهاتف' : null,
               ),
             ],
           ),
@@ -428,11 +482,9 @@ class _AddClientDialogState extends State<AddClientDialog> {
                     DateTime.now().millisecondsSinceEpoch.toString(),
                 name: _nameController.text,
                 phone: _phoneController.text,
-                email: _emailController.text,
+                email: '',
                 type: _selectedType,
                 balance: widget.client?.balance ?? 0.0,
-                invoiceState: widget
-                    .client?.invoiceState, // Preserve existing state if editing
               );
               Navigator.pop(context, client);
             }
@@ -447,7 +499,6 @@ class _AddClientDialogState extends State<AddClientDialog> {
   void dispose() {
     _nameController.dispose();
     _phoneController.dispose();
-    _emailController.dispose();
     super.dispose();
   }
 }

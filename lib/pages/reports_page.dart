@@ -574,64 +574,56 @@ class _ReportsPageState extends State<ReportsPage> {
                                                           Navigator.push(
                                                             context,
                                                             MaterialPageRoute(
-                                                              builder: (context) =>
-                                                                  EditInvoicePage(
-                                                                      invoice: data[
-                                                                          'invoice']),
+                                                              builder: (context) => EditInvoicePage(invoice: data['invoice']),
                                                             ),
                                                           ).then((value) {
                                                             if (value == null) {
                                                               showDialog(
-                                                                context:
-                                                                    context,
-                                                                builder:
-                                                                    (context) =>
-                                                                        AlertDialog(
-                                                                  title: const Text(
-                                                                      'تأكيد الخروج',
-                                                                      textAlign:
-                                                                          TextAlign
-                                                                              .right),
+                                                                context: context,
+                                                                builder: (context) => AlertDialog(
+                                                                  title: const Text('تأكيد الخروج', textAlign: TextAlign.right),
                                                                   content: const Text(
-                                                                      'هل تريد الحفظ والخروج أم الخروج بدون حفظ؟',
-                                                                      textAlign:
-                                                                          TextAlign
-                                                                              .right),
+                                                                    'هل تريد الحفظ والخروج أم الخروج بدون حفظ؟',
+                                                                    textAlign: TextAlign.right,
+                                                                  ),
                                                                   actions: [
                                                                     TextButton(
-                                                                      onPressed:
-                                                                          () {
-                                                                        final updatedInvoice =
-                                                                            data['invoice'];
-                                                                        updatedInvoice.invoiceNumber +=
-                                                                            ' (Edited)';
-                                                                        context
-                                                                            .read<DataProvider>()
-                                                                            .updateInvoice(updatedInvoice);
-                                                                        Navigator.pop(
-                                                                            context);
-                                                                        Navigator.pop(
-                                                                            context);
+                                                                      onPressed: () {
+                                                                        final oldInvoice = data['invoice'] as Invoice;
+                                                                        final updatedInvoice = Invoice(
+                                                                          id: oldInvoice.id,
+                                                                          invoiceNumber: "${oldInvoice.invoiceNumber} (Edited)",
+                                                                          clientId: oldInvoice.clientId,
+                                                                          isDeferred: oldInvoice.isDeferred,
+                                                                          items: oldInvoice.items,
+                                                                          type: oldInvoice.type,
+                                                                          date: oldInvoice.date,
+                                                                          state: oldInvoice.state,
+                                                                          paidAmount: oldInvoice.paidAmount,
+                                                                        );
+                                                                        context.read<DataProvider>().updateInvoice(updatedInvoice);
+                                                                        Navigator.pop(context, true); // ✅ closes dialog and sends result
                                                                       },
-                                                                      child: const Text(
-                                                                          'حفظ وخروج'),
+                                                                      child: const Text('حفظ وخروج'),
                                                                     ),
                                                                     TextButton(
-                                                                      onPressed:
-                                                                          () {
-                                                                        Navigator.pop(
-                                                                            context);
-                                                                        Navigator.pop(
-                                                                            context);
+                                                                      onPressed: () {
+                                                                        Navigator.pop(context, false); // ✅ closes dialog only
                                                                       },
-                                                                      child: const Text(
-                                                                          'خروج بدون حفظ'),
+                                                                      child: const Text('خروج بدون حفظ'),
                                                                     ),
                                                                   ],
                                                                 ),
-                                                              );
+                                                              ).then((result) {
+                                                                if (result == true) {
+                                                                  ScaffoldMessenger.of(context).showSnackBar(
+                                                                    const SnackBar(content: Text('تم حفظ التعديلات')),
+                                                                  );
+                                                                }
+                                                              });
                                                             }
                                                           });
+
                                                         },
                                                         tooltip: 'تعديل',
                                                       ),
@@ -647,6 +639,32 @@ class _ReportsPageState extends State<ReportsPage> {
                                                               data['invoice']);
                                                         },
                                                         tooltip: 'طباعة',
+                                                      ),
+                                                      IconButton(
+                                                        icon: const Icon(Icons.delete, color: Colors.red),
+                                                        onPressed: () {
+                                                          showDialog(
+                                                            context: context,
+                                                            builder: (context) => AlertDialog(
+                                                              title: const Text('تأكيد الحذف', textAlign: TextAlign.right),
+                                                              content: const Text('هل أنت متأكد أنك تريد حذف هذه الفاتورة؟', textAlign: TextAlign.right),
+                                                              actions: [
+                                                                TextButton(
+                                                                  onPressed: () => Navigator.pop(context),
+                                                                  child: const Text('إلغاء'),
+                                                                ),
+                                                                TextButton(
+                                                                  onPressed: () {
+                                                                    context.read<DataProvider>().deleteInvoice(data['invoice'].id); // ✅ pass id
+                                                                    Navigator.pop(context);
+                                                                  },
+                                                                  child: const Text('حذف', style: TextStyle(color: Colors.red)),
+                                                                ),
+                                                              ],
+                                                            ),
+                                                          );
+                                                        },
+                                                        tooltip: 'حذف',
                                                       ),
                                                     ],
                                                   ),
@@ -1171,9 +1189,6 @@ class _EditInvoicePageState extends State<EditInvoicePage> {
                                   onChanged: (value) =>
                                       setState(() => _isDeferred = value!),
                                 ),
-                                const Text('دفع مؤجل',
-                                    style:
-                                        TextStyle(fontWeight: FontWeight.bold)),
                               ],
                             ),
                             const SizedBox(height: 10),
@@ -1386,6 +1401,8 @@ class _EditInvoicePageState extends State<EditInvoicePage> {
                   ),
                 ],
               ),
-            )));
+            )
+        )
+    );
   }
 }

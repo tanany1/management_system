@@ -167,7 +167,7 @@ class DataProvider with ChangeNotifier {
     if (index != -1) {
       _invoices[index] = invoice;
       HiveService.invoicesBox.put(invoice.id, invoice);
-// Update client with invoice state
+      // Update client with invoice state
       final clientIndex = _clients.indexWhere((c) => c.id == invoice.clientId);
       if (clientIndex != -1) {
         _clients[clientIndex] = Client(
@@ -181,6 +181,47 @@ class DataProvider with ChangeNotifier {
         );
         HiveService.clientsBox
             .put(_clients[clientIndex].id, _clients[clientIndex]);
+      }
+      notifyListeners();
+    }
+  }
+
+  void deleteInvoice(String id) {
+    final index = _invoices.indexWhere((i) => i.id == id);
+    if (index != -1) {
+      final invoice = _invoices[index];
+      _invoices.removeAt(index);
+      HiveService.invoicesBox.delete(id);
+      // Optionally adjust client balance if needed (e.g., reverse the effect of paid amount)
+      final clientIndex = _clients.indexWhere((c) => c.id == invoice.clientId);
+      if (clientIndex != -1 && invoice.paidAmount != null) {
+        _clients[clientIndex] = Client(
+          id: _clients[clientIndex].id,
+          name: _clients[clientIndex].name,
+          phone: _clients[clientIndex].phone,
+          email: _clients[clientIndex].email,
+          type: _clients[clientIndex].type,
+          balance: _clients[clientIndex].balance + invoice.paidAmount!,
+          invoiceState: null, // Reset invoice state if invoice is deleted
+        );
+        HiveService.clientsBox.put(_clients[clientIndex].id, _clients[clientIndex]);
+      }
+      // Optionally adjust product quantities if needed (reverse the effect of the invoice)
+      for (var item in invoice.items) {
+        final productIndex = _products.indexWhere((p) => p.id == item.productId);
+        if (productIndex != -1) {
+          final product = _products[productIndex];
+          _products[productIndex] = Product(
+            id: product.id,
+            name: product.name,
+            barcode: product.barcode,
+            price: product.price,
+            purchasePrice: product.purchasePrice,
+            quantity: product.quantity + item.quantity,
+            categoryId: product.categoryId,
+          );
+          HiveService.productsBox.put(product.id, _products[productIndex]);
+        }
       }
       notifyListeners();
     }

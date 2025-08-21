@@ -15,12 +15,18 @@ class _IncomingInvoicePageState extends State<IncomingInvoicePage> {
   final _invoiceNumberController = TextEditingController(text: 'PUR-${DateTime.now().millisecondsSinceEpoch}');
   String? _selectedSupplierId;
   bool _isDeferred = false;
+  String _invoiceState = 'postponed'; // Default state
+  double _paidAmount = 0.0; // For partially paid state
   List<InvoiceItem> items = [
     InvoiceItem(productId: '', name: '', categoryId: '', quantity: 1, price: 0.0, purchasePrice: 0.0),
   ];
 
   double get totalAmount {
     return items.fold(0.0, (sum, item) => sum + (item.quantity * item.purchasePrice));
+  }
+
+  double get remainingAmount {
+    return totalAmount - _paidAmount;
   }
 
   void addNewItem() {
@@ -40,16 +46,17 @@ class _IncomingInvoicePageState extends State<IncomingInvoicePage> {
   void _saveInvoice(BuildContext context) {
     if (_formKey.currentState!.validate() && _selectedSupplierId != null) {
       final provider = context.read<DataProvider>();
+      final supplier = provider.clients.firstWhere((s) => s.id == _selectedSupplierId);
       // Update supplier balance
       if (_isDeferred) {
-        final supplier = provider.clients.firstWhere((s) => s.id == _selectedSupplierId);
         provider.updateClient(Client(
           id: supplier.id,
           name: supplier.name,
           phone: supplier.phone,
           email: supplier.email,
           type: supplier.type,
-          balance: supplier.balance + totalAmount,
+          balance: supplier.balance + (_invoiceState == 'partially paid' ? _paidAmount : totalAmount),
+          invoiceState: _invoiceState,
         ));
       }
       // Update product quantities
@@ -88,6 +95,8 @@ class _IncomingInvoicePageState extends State<IncomingInvoicePage> {
         items: items,
         type: 'incoming',
         date: DateTime.now(),
+        state: _invoiceState,
+        paidAmount: _paidAmount,
       ));
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('تم حفظ فاتورة الوارد بنجاح')),
@@ -99,6 +108,8 @@ class _IncomingInvoicePageState extends State<IncomingInvoicePage> {
         items = [InvoiceItem(productId: '', name: '', categoryId: '', quantity: 1, price: 0.0, purchasePrice: 0.0)];
         _selectedSupplierId = null;
         _isDeferred = false;
+        _invoiceState = 'postponed';
+        _paidAmount = 0.0;
       });
     }
   }
@@ -124,6 +135,8 @@ class _IncomingInvoicePageState extends State<IncomingInvoicePage> {
                     items = [InvoiceItem(productId: '', name: '', categoryId: '', quantity: 1, price: 0.0, purchasePrice: 0.0)];
                     _selectedSupplierId = null;
                     _isDeferred = false;
+                    _invoiceState = 'postponed';
+                    _paidAmount = 0.0;
                   });
                 },
                 icon: const Icon(Icons.add, color: Colors.white),
@@ -192,12 +205,57 @@ class _IncomingInvoicePageState extends State<IncomingInvoicePage> {
                     Row(
                       children: [
                         Checkbox(
-                          value: _isDeferred,
-                          onChanged: (value) => setState(() => _isDeferred = value!),
+                          value: _invoiceState == 'fully paid',
+                          onChanged: (value) => setState(() {
+                            _invoiceState = 'fully paid';
+                            _isDeferred = false;
+                            _paidAmount = totalAmount;
+                          }),
                         ),
-                        const Text('دفع مؤجل', style: TextStyle(fontWeight: FontWeight.bold)),
+                        const Text('خالص', style: TextStyle(fontWeight: FontWeight.bold)),
+                        const SizedBox(width: 20),
+                        Checkbox(
+                          value: _invoiceState == 'partially paid',
+                          onChanged: (value) => setState(() {
+                            _invoiceState = 'partially paid';
+                            _isDeferred = true;
+                          }),
+                        ),
+                        const Text('جزئي', style: TextStyle(fontWeight: FontWeight.bold)),
+                        const SizedBox(width: 20),
+                        Checkbox(
+                          value: _invoiceState == 'postponed',
+                          onChanged: (value) => setState(() {
+                            _invoiceState = 'postponed';
+                            _isDeferred = true;
+                            _paidAmount = 0.0;
+                          }),
+                        ),
+                        const Text('مؤجل', style: TextStyle(fontWeight: FontWeight.bold)),
                       ],
                     ),
+                    if (_invoiceState == 'partially paid')
+                      Padding(
+                        padding: const EdgeInsets.only(top: 10.0),
+                        child: TextFormField(
+                          keyboardType: TextInputType.number,
+                          textAlign: TextAlign.right,
+                          decoration: const InputDecoration(
+                            labelText: 'المبلغ المدفوع',
+                            border: OutlineInputBorder(),
+                          ),
+                          validator: (value) => double.tryParse(value ?? '') == null || double.parse(value!) < 0
+                              ? 'يرجى إدخال مبلغ صحيح'
+                              : double.parse(value) > totalAmount
+                              ? 'المبلغ المدفوع لا يمكن أن يتجاوز الإجمالي'
+                              : null,
+                          onChanged: (value) {
+                            setState(() {
+                              _paidAmount = double.tryParse(value) ?? 0.0;
+                            });
+                          },
+                        ),
+                      ),
                     const SizedBox(height: 20),
                     Container(
                       width: double.infinity,
@@ -328,6 +386,29 @@ class _IncomingInvoicePageState extends State<IncomingInvoicePage> {
                               const Text('المبلغ الإجمالي:', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                             ],
                           ),
+                          if (_invoiceState == 'partially paid' || _invoiceState == 'fully paid') ...[
+                            const SizedBox(height: 8),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  '${_paidAmount.toStringAsFixed(2)} ج.م',
+                                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.blue),
+                                ),
+                                const Text('المبلغ المدفوع:', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                              ],
+                            ),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  '${remainingAmount.toStringAsFixed(2)} ج.م',
+                                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.red),
+                                ),
+                                const Text('المبلغ المتبقي:', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                              ],
+                            ),
+                          ],
                           const SizedBox(height: 16),
                           Row(
                             children: [
